@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 11% 98%; /* #F8FAFC */
+  --foreground: 220 15% 10%; /* #0F172A */
+  --muted: 210 11% 96%; /* #F1F5F9 */
+  --muted-foreground: 215 16% 47%; /* #64748B */
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 15% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 15% 10%;
+  --border: 215 20% 91%; /* #E2E8F0 */
+  --input: 215 20% 91%;
+  --primary: 217 91% 60%; /* #2563EB */
+  --primary-foreground: 210 40% 98%;
+  --secondary: 160 84% 39%; /* #10B981 */
+  --secondary-foreground: 0 0% 100%;
+  --accent: 43 96% 56%; /* #F59E0B */
+  --accent-foreground: 20 14% 4%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 60 9% 98%;
+  --ring: 217 91% 60%;
+  --radius: 0.75rem;
+  
+  /* Custom colors for the app */
+  --neutral-50: 210 11% 98%;
+  --neutral-100: 210 11% 96%;
+  --neutral-200: 215 20% 91%;
+  --neutral-300: 215 16% 83%;
+  --neutral-400: 215 16% 47%;
+  --neutral-500: 215 16% 47%;
+  --neutral-600: 215 20% 38%;
+  --neutral-700: 215 25% 27%;
+  --neutral-800: 217 33% 17%;
+  --neutral-900: 220 39% 11%;
+}
+
+.dark {
+  --background: 220 39% 11%;
+  --foreground: 210 11% 98%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 16% 65%;
+  --popover: 220 39% 11%;
+  --popover-foreground: 210 11% 98%;
+  --card: 220 39% 11%;
+  --card-foreground: 210 11% 98%;
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 160 84% 39%;
+  --secondary-foreground: 0 0% 100%;
+  --accent: 43 96% 56%;
+  --accent-foreground: 20 14% 4%;
+  --destructive: 0 62% 50%;
+  --destructive-foreground: 210 11% 98%;
+  --ring: 217 91% 60%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-inter antialiased bg-background text-foreground;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer components {
+  .animate-pulse-slow {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+  }
+
+  .glass-effect {
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .glass-effect {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
