@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-first responsive design */
+@media (max-width: 768px) {
+  .mobile-stack {
+    @apply flex-col space-y-4;
+  }
+  
+  .mobile-full-width {
+    @apply w-full;
+  }
+  
+  .mobile-hidden {
+    @apply hidden;
+  }
+  
+  .mobile-text-sm {
+    @apply text-sm;
+  }
+  
+  .mobile-p-2 {
+    @apply p-2;
+  }
+  
+  .mobile-gap-2 {
+    @apply gap-2;
+  }
+}
+
 :root {
   --background: 210 11% 98%; /* #F8FAFC */
   --foreground: 220 15% 10%; /* #0F172A */

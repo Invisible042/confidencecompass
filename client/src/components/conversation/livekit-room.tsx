@@ -214,10 +214,10 @@ export function LiveKitRoom({ roomData, topic, onEnd }: LiveKitRoomProps) {
         </CardContent>
       </Card>
 
-      {/* Real-time Analysis Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Real-time Analysis Grid - Mobile Responsive */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Camera Feed and LiveKit Room */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 md:space-y-6">
           <CameraFeed
             videoRef={videoRef}
             isActive={conversationStarted}
@@ -234,8 +234,8 @@ export function LiveKitRoom({ roomData, topic, onEnd }: LiveKitRoomProps) {
             onDisconnected={handleDisconnected}
             options={{
               publishDefaults: {
-                audio: true,
-                video: false,
+                audioEnabled: true,
+                videoEnabled: false,
               },
               adaptiveStream: true,
               dynacast: true,
