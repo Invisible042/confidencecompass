@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSessionSchema } from "@shared/schema";
 import { z } from "zod";
+import { conversationTopics, getTopicById } from "./conversation-topics";
+import { liveKitService } from "./livekit-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user (demo user)
@@ -87,6 +89,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Session deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete session" });
+    }
+  });
+
+  // Get conversation topics
+  app.get("/api/conversation/topics", async (req, res) => {
+    try {
+      res.json(conversationTopics);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch topics" });
+    }
+  });
+
+  // Create LiveKit conversation room
+  app.post("/api/conversation/create-room", async (req, res) => {
+    try {
+      const { topicId } = req.body;
+      
+      if (!topicId) {
+        return res.status(400).json({ message: "Topic ID is required" });
+      }
+
+      const topic = getTopicById(topicId);
+      if (!topic) {
+        return res.status(404).json({ message: "Topic not found" });
+      }
+
+      const liveKitSession = await liveKitService.createConversationRoom(1, topicId); // Using demo user ID
+      
+      res.json({
+        ...liveKitSession,
+        serverUrl: liveKitService.getConnectionUrl()
+      });
+    } catch (error) {
+      console.error("Error creating LiveKit room:", error);
+      res.status(500).json({ message: "Failed to create conversation room" });
     }
   });
 

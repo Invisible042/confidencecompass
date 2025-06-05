@@ -84,3 +84,19 @@ export interface SessionStats {
   sessionsThisWeek: number;
   improvementPercent: number;
 }
+
+// LiveKit conversation types
+export interface ConversationTopic {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  category: string;
+  prompt: string;
+}
+
+export interface LiveKitSession {
+  roomName: string;
+  token: string;
+  topic: ConversationTopic;
+}
