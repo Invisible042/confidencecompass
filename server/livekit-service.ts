@@ -26,10 +26,11 @@ export class LiveKitService {
     const roomName = `conversation-${userId}-${topicId}-${Date.now()}`;
     const participantName = `user-${userId}`;
 
-    // Create access token for the user
+    // Create access token for the user with proper expiration
     const token = new AccessToken(this.apiKey, this.apiSecret, {
       identity: participantName,
       name: participantName,
+      ttl: '1h', // 1 hour expiration
     });
 
     // Grant permissions to join room and publish/subscribe
@@ -39,9 +40,10 @@ export class LiveKitService {
       canPublish: true,
       canSubscribe: true,
       canPublishData: true,
+      canUpdateOwnMetadata: true,
     });
 
-    const jwt = token.toJwt();
+    const jwt = await token.toJwt();
 
     return {
       roomName,

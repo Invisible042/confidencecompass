@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConversationTopic } from "@shared/schema";
-import { Mic, MicOff, Volume2, VolumeX, Eye, Headphones } from "lucide-react";
+import { Mic, MicOff, Volume2, VolumeX, Eye, Headphones, MessageCircle } from "lucide-react";
 import { useCamera } from "@/hooks/use-camera";
 import { useVoiceAnalyzer } from "@/hooks/use-voice-analyzer";
 import { useEyeTracking } from "@/hooks/use-eye-tracking";
@@ -178,38 +178,38 @@ export function LiveKitRoom({ roomData, topic, onEnd }: LiveKitRoomProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>AI Conversation Session</span>
-            <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
-              <span className="text-sm text-gray-600">
-                {isConnected ? 'Connected' : 'Connecting...'}
-              </span>
-            </div>
+          <CardTitle className="text-lg md:text-xl flex items-center justify-between">
+            <span className="flex items-center">
+              <MessageCircle className="mr-2 h-5 w-5" />
+              {topic.title}
+            </span>
+            <Badge variant={topic.difficulty === 'beginner' ? 'default' : 
+                          topic.difficulty === 'intermediate' ? 'secondary' : 'destructive'}>
+              {topic.difficulty}
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-medium text-gray-900">{topic.title}</h3>
-              <p className="text-sm text-gray-600 mt-1">{topic.description}</p>
-              <div className="flex items-center space-x-2 mt-2">
-                <Badge variant="secondary">{topic.category}</Badge>
-                <Badge className={
-                  topic.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
-                  topic.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }>
-                  {topic.difficulty}
-                </Badge>
+          <div className="space-y-4">
+            <p className="text-gray-600 text-sm md:text-base">{topic.description}</p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline">{topic.category}</Badge>
+                <span className="text-sm text-gray-500">
+                  Session: {formatTime(sessionTimer)}
+                </span>
               </div>
+              <Button 
+                variant="destructive" 
+                onClick={handleEndConversation}
+                className="w-full sm:w-auto"
+              >
+                End Conversation
+              </Button>
             </div>
-            <Button onClick={onEnd} variant="destructive">
-              End Session
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -234,8 +234,8 @@ export function LiveKitRoom({ roomData, topic, onEnd }: LiveKitRoomProps) {
             onDisconnected={handleDisconnected}
             options={{
               publishDefaults: {
-                audioEnabled: true,
-                videoEnabled: false,
+                audio: true,
+                video: false,
               },
               adaptiveStream: true,
               dynacast: true,
@@ -244,13 +244,13 @@ export function LiveKitRoom({ roomData, topic, onEnd }: LiveKitRoomProps) {
           >
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <Headphones className="mr-2 h-5 w-5" />
+                <CardTitle className="text-base md:text-lg flex items-center">
+                  <Headphones className="mr-2 h-4 w-4 md:h-5 md:w-5" />
                   AI Conversation Audio
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-center space-x-4">
+                <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
                   <Button
                     variant="outline"
                     size="icon"
@@ -319,27 +319,15 @@ export function LiveKitRoom({ roomData, topic, onEnd }: LiveKitRoomProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Conversation Tips</CardTitle>
+          <CardTitle className="text-base md:text-lg">Conversation Tips</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">Speaking Tips:</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• Speak clearly and at a moderate pace</li>
-                <li>• Pause between sentences</li>
-                <li>• Ask questions to keep conversation flowing</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">Listening Tips:</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• Wait for AI responses completely</li>
-                <li>• Show engagement through responses</li>
-                <li>• Build on what the AI says</li>
-              </ul>
-            </div>
-          </div>
+          <ul className="space-y-2 text-sm text-gray-600">
+            <li>• Maintain natural eye contact with the camera</li>
+            <li>• Speak clearly and at a comfortable pace</li>
+            <li>• Listen actively to the AI responses</li>
+            <li>• Practice natural conversation flow</li>
+          </ul>
         </CardContent>
       </Card>
     </div>
