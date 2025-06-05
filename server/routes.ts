@@ -102,10 +102,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create LiveKit conversation room
+  // Create LiveKit conversation room with AI voice agent
   app.post("/api/conversation/create-room", async (req, res) => {
     try {
-      const { topicId } = req.body;
+      const { topicId, difficulty = "intermediate" } = req.body;
       
       if (!topicId) {
         return res.status(400).json({ message: "Topic ID is required" });
@@ -117,6 +117,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const liveKitSession = await liveKitService.createConversationRoom(1, topicId); // Using demo user ID
+      
+      // Start AI voice agent for this room
+      await liveKitService.startVoiceAgent(liveKitSession.roomName, { 
+        topic: topic.title, 
+        difficulty,
+        prompt: topic.prompt
+      });
       
       // Start AI conversation session
       setTimeout(async () => {

@@ -419,18 +419,18 @@ export class AdvancedVoiceAnalyzer {
     const threshold = 0.01;
     const segments: number[] = [];
     
-    for (let i = 0; i < audio.length - windowSize; i += windowSize) {
-      const window = audio.slice(i, i + windowSize);
+    for (let windowStart = 0; windowStart < audio.length - windowSize; windowStart += windowSize) {
+      const window = audio.slice(windowStart, windowStart + windowSize);
       let energy = 0;
       
-      for (let i = 0; i < window.length; i++) {
-        energy += window[i] * window[i];
+      for (let j = 0; j < window.length; j++) {
+        energy += window[j] * window[j];
       }
       
       energy /= windowSize;
       
       if (energy > threshold) {
-        segments.push(i);
+        segments.push(windowStart);
       }
     }
     

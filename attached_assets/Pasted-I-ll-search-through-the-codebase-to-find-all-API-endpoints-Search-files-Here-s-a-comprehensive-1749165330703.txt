@@ -1,0 +1,81 @@
+I'll search through the codebase to find all API endpoints:
+
+
+Search files...
+Here's a comprehensive list of all API endpoints in the application:
+
+### User Endpoints
+1. `GET /api/user`
+   - Gets current user information (demo user)
+   - Returns user data or 404 if not found
+
+2. `GET /api/user/progress`
+   - Gets user progress and statistics
+   - Returns progress data and session stats
+
+### Session Endpoints
+3. `POST /api/sessions`
+   - Creates a new practice session
+   - Requires session data in request body
+   - Returns created session
+
+4. `GET /api/sessions`
+   - Gets user's sessions
+   - Optional query parameter: `limit`
+   - Returns array of sessions
+
+5. `GET /api/sessions/:id`
+   - Gets specific session by ID
+   - Returns session data or 404 if not found
+
+6. `DELETE /api/sessions/:id`
+   - Deletes a specific session
+   - Returns success message or 404 if not found
+
+### Conversation Endpoints
+7. `GET /api/conversation/topics`
+   - Gets available conversation topics
+   - Returns array of topics
+
+8. `POST /api/conversation/create-room`
+   - Creates a new LiveKit conversation room
+   - Requires `topicId` in request body
+   - Returns room data including:
+     - roomName
+     - token
+     - serverUrl
+     - topic information
+
+9. `POST /api/conversation/message`
+   - Processes user message in conversation
+   - Requires `roomName` and `message` in request body
+   - Returns:
+     - AI response
+     - Audio buffer availability
+
+10. `POST /api/conversation/end`
+    - Ends an active conversation
+    - Requires `roomName` in request body
+    - Returns success message
+
+All endpoints are implemented in `/server/routes.ts` and follow this general structure:
+```typescript
+app.[method]("/api/[endpoint]", async (req, res) => {
+  try {
+    // Request handling
+    // Data processing
+    res.json(responseData);
+  } catch (error) {
+    res.status(error.status || 500).json({ message: error.message });
+  }
+});
+```
+
+The server is configured to:
+- Run on port 5000
+- Handle both API and client requests
+- Include request logging for API endpoints
+- Support development mode with Vite
+- Include error handling middleware
+
+Would you like me to explain any specific endpoint in more detail?

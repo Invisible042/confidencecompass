@@ -1,11 +1,13 @@
 import { AccessToken } from "livekit-server-sdk";
 import { ConversationTopic, LiveKitSession } from "@shared/schema";
 import { getTopicById } from "./conversation-topics";
+import { spawn } from "child_process";
 
 export class LiveKitService {
   private apiKey: string;
   private apiSecret: string;
   private wsUrl: string;
+  private activeAgents: Map<string, any> = new Map();
 
   constructor() {
     this.apiKey = process.env.LIVEKIT_API_KEY!;
@@ -67,6 +69,71 @@ export class LiveKitService {
     });
 
     return agentToken.toJwt();
+  }
+
+  async startVoiceAgent(roomName: string, options: { 
+    topic: string; 
+    difficulty: string; 
+    prompt: string; 
+  }): Promise<void> {
+    try {
+      // Create metadata for the voice agent
+      const metadata = JSON.stringify({
+        topic: options.topic,
+        difficulty: options.difficulty,
+        prompt: options.prompt
+      });
+
+      // Start the Python voice agent process
+      const agentProcess = spawn('python', [
+        'server/livekit-voice-agent.py',
+        '--room', roomName,
+        '--livekit-url', this.wsUrl,
+        '--api-key', this.apiKey,
+        '--api-secret', this.apiSecret,
+        '--metadata', metadata
+      ], {
+        env: {
+          ...process.env,
+          LIVEKIT_URL: this.wsUrl,
+          LIVEKIT_API_KEY: this.apiKey,
+          LIVEKIT_API_SECRET: this.apiSecret,
+          OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+          DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY
+        }
+      });
+
+      // Store the agent process
+      this.activeAgents.set(roomName, agentProcess);
+
+      agentProcess.stdout?.on('data', (data) => {
+        console.log(`Voice Agent ${roomName}:`, data.toString());
+      });
+
+      agentProcess.stderr?.on('data', (data) => {
+        console.error(`Voice Agent ${roomName} Error:`, data.toString());
+      });
+
+      agentProcess.on('close', (code) => {
+        console.log(`Voice Agent ${roomName} exited with code ${code}`);
+        this.activeAgents.delete(roomName);
+      });
+
+      // Wait a moment for the agent to initialize
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+    } catch (error) {
+      console.error('Failed to start voice agent:', error);
+      throw new Error('Failed to start voice agent');
+    }
+  }
+
+  async stopVoiceAgent(roomName: string): Promise<void> {
+    const agentProcess = this.activeAgents.get(roomName);
+    if (agentProcess) {
+      agentProcess.kill();
+      this.activeAgents.delete(roomName);
+    }
   }
 
   getConnectionUrl(): string {
