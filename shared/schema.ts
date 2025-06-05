@@ -22,6 +22,9 @@ export const sessions = pgTable("sessions", {
   recordingUrl: text("recording_url"),
   eyeTrackingData: jsonb("eye_tracking_data"), // stores eye position data over time
   voiceMetrics: jsonb("voice_metrics"), // stores voice analysis data
+  sessionType: text("session_type").notNull().default("practice"), // "practice" or "conversation"
+  conversationTopic: text("conversation_topic"), // topic ID for conversation sessions
+  aiInteractions: jsonb("ai_interactions"), // stores AI conversation data
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

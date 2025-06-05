@@ -92,6 +92,9 @@ export class MemStorage implements IStorage {
       recordingUrl: insertSession.recordingUrl || null,
       eyeTrackingData: insertSession.eyeTrackingData || null,
       voiceMetrics: insertSession.voiceMetrics || null,
+      sessionType: insertSession.sessionType || "practice",
+      conversationTopic: insertSession.conversationTopic || null,
+      aiInteractions: insertSession.aiInteractions || null,
       createdAt: new Date()
     };
     this.sessions.set(id, session);
