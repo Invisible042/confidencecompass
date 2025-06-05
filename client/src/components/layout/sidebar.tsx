@@ -1,10 +1,11 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { Eye, BarChart3, Video, History, Settings, User } from "lucide-react";
+import { Eye, BarChart3, Video, History, Settings, User, MessageCircle } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: BarChart3 },
   { name: "Practice Session", href: "/practice", icon: Video },
+  { name: "AI Conversation", href: "/ai-conversation", icon: MessageCircle },
   { name: "Session History", href: "/history", icon: History },
   { name: "Settings", href: "/settings", icon: Settings },
 ];

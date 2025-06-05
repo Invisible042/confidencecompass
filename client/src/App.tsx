@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar } from "@/components/layout/sidebar";
 import Dashboard from "@/pages/dashboard";
 import PracticeSession from "@/pages/practice-session";
+import AIConversation from "@/pages/ai-conversation";
 import SessionHistory from "@/pages/session-history";
 import Settings from "@/pages/settings";
 
@@ -17,6 +18,7 @@ function Router() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/practice" component={PracticeSession} />
+          <Route path="/ai-conversation" component={AIConversation} />
           <Route path="/history" component={SessionHistory} />
           <Route path="/settings" component={Settings} />
           <Route>
