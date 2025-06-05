@@ -5,6 +5,7 @@ import { insertSessionSchema } from "@shared/schema";
 import { z } from "zod";
 import { conversationTopics, getTopicById } from "./conversation-topics";
 import { liveKitService } from "./livekit-service";
+import { aiConversationService } from "./ai-conversation-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user (demo user)
@@ -117,6 +118,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const liveKitSession = await liveKitService.createConversationRoom(1, topicId); // Using demo user ID
       
+      // Start AI conversation session
+      setTimeout(async () => {
+        try {
+          await aiConversationService.startConversation(liveKitSession.roomName, topicId);
+          console.log(`AI Conversation started for room: ${liveKitSession.roomName}`);
+        } catch (aiError) {
+          console.error("Failed to start AI conversation:", aiError);
+        }
+      }, 2000); // Give user time to join first
+      
       res.json({
         ...liveKitSession,
         serverUrl: liveKitService.getConnectionUrl()
@@ -124,6 +135,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating LiveKit room:", error);
       res.status(500).json({ message: "Failed to create conversation room" });
+    }
+  });
+
+  // AI Conversation endpoints
+  app.post("/api/conversation/message", async (req, res) => {
+    try {
+      const { roomName, message } = req.body;
+      
+      if (!roomName || !message) {
+        return res.status(400).json({ message: "Room name and message are required" });
+      }
+
+      const aiResponse = await aiConversationService.processUserInput(roomName, message);
+      const audioBuffer = await aiConversationService.generateResponse(roomName, aiResponse);
+      
+      res.json({
+        response: aiResponse,
+        hasAudio: !!audioBuffer
+      });
+    } catch (error) {
+      console.error("Error processing conversation message:", error);
+      res.status(500).json({ message: "Failed to process message" });
+    }
+  });
+
+  app.post("/api/conversation/end", async (req, res) => {
+    try {
+      const { roomName } = req.body;
+      
+      if (!roomName) {
+        return res.status(400).json({ message: "Room name is required" });
+      }
+
+      aiConversationService.endConversation(roomName);
+      res.json({ message: "Conversation ended successfully" });
+    } catch (error) {
+      console.error("Error ending conversation:", error);
+      res.status(500).json({ message: "Failed to end conversation" });
     }
   });
 
