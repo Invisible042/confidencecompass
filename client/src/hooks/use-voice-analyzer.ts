@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { VoiceMetric } from "@shared/schema";
 import { AdvancedVoiceAnalyzer, AdvancedVoiceMetrics } from "../lib/advanced-audio-analysis";
+import { EnhancedVoiceAnalyzer, EnhancedVoiceMetrics, RealTimeVoiceAnalysis } from "../lib/enhanced-voice-analyzer";
 
 // Enhanced voice analyzer interface
 interface VoiceAnalyzerOptions {
@@ -14,6 +15,8 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
   const [isRecording, setIsRecording] = useState(false);
   const [voiceMetrics, setVoiceMetrics] = useState<VoiceMetric[]>([]);
   const [advancedMetrics, setAdvancedMetrics] = useState<AdvancedVoiceMetrics | null>(null);
+  const [enhancedMetrics, setEnhancedMetrics] = useState<EnhancedVoiceMetrics | null>(null);
+  const [realTimeAnalysis, setRealTimeAnalysis] = useState<RealTimeVoiceAnalysis | null>(null);
   const [deepgramTranscription, setDeepgramTranscription] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
@@ -22,21 +25,30 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const advancedAnalyzerRef = useRef<AdvancedVoiceAnalyzer | null>(null);
+  const enhancedAnalyzerRef = useRef<EnhancedVoiceAnalyzer | null>(null);
   const deepgramSocketRef = useRef<WebSocket | null>(null);
   const audioBufferRef = useRef<Float32Array[]>([]);
+  const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize advanced voice analyzer
+  // Initialize enhanced voice analyzer
   useEffect(() => {
     if (options.enableDeepgram && options.deepgramApiKey) {
       advancedAnalyzerRef.current = new AdvancedVoiceAnalyzer(options.deepgramApiKey);
+      enhancedAnalyzerRef.current = new EnhancedVoiceAnalyzer(options.deepgramApiKey);
     }
     
     return () => {
       if (advancedAnalyzerRef.current) {
         advancedAnalyzerRef.current.destroy();
       }
+      if (enhancedAnalyzerRef.current) {
+        enhancedAnalyzerRef.current.destroy();
+      }
       if (deepgramSocketRef.current) {
         deepgramSocketRef.current.close();
+      }
+      if (analysisIntervalRef.current) {
+        clearInterval(analysisIntervalRef.current);
       }
     };
   }, [options.enableDeepgram, options.deepgramApiKey]);
@@ -249,6 +261,28 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
       
+      // Initialize enhanced analyzer if enabled
+      if (options.enableDeepgram && enhancedAnalyzerRef.current) {
+        await enhancedAnalyzerRef.current.initialize(stream);
+        
+        // Start real-time enhanced analysis
+        analysisIntervalRef.current = setInterval(async () => {
+          if (enhancedAnalyzerRef.current) {
+            try {
+              const analysis = await enhancedAnalyzerRef.current.analyzeCurrentVoice();
+              setRealTimeAnalysis(analysis);
+              setEnhancedMetrics(analysis.currentMetrics);
+              
+              // Update transcription from enhanced analyzer
+              const transcript = (enhancedAnalyzerRef.current as any).transcriptionBuffer || "";
+              setDeepgramTranscription(transcript);
+            } catch (error) {
+              console.warn('Enhanced analysis failed:', error);
+            }
+          }
+        }, 1000); // Analyze every second
+      }
+
       // Initialize advanced analyzer if enabled
       if (options.enableDeepgram && advancedAnalyzerRef.current) {
         await advancedAnalyzerRef.current.initialize(stream);
@@ -344,6 +378,8 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
     
     // Advanced metrics
     advancedMetrics,
+    enhancedMetrics,
+    realTimeAnalysis,
     deepgramTranscription,
     isAnalyzing,
     
@@ -358,6 +394,7 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
     
     // Status
     hasDeepgramConnection: !!deepgramSocketRef.current,
-    hasAdvancedAnalyzer: !!advancedAnalyzerRef.current
+    hasAdvancedAnalyzer: !!advancedAnalyzerRef.current,
+    hasEnhancedAnalyzer: !!enhancedAnalyzerRef.current
   };
 }
