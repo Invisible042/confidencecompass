@@ -6,17 +6,7 @@ from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import AgentSession, Agent, RoomInputOptions
 from livekit.plugins import openai, deepgram, silero
-try:
-    from livekit.plugins import noise_cancellation
-    NOISE_CANCELLATION_AVAILABLE = True
-except ImportError:
-    NOISE_CANCELLATION_AVAILABLE = False
-
-try:
-    from livekit.plugins.turn_detector.multilingual import MultilingualModel
-    TURN_DETECTION_AVAILABLE = True
-except ImportError:
-    TURN_DETECTION_AVAILABLE = False
+from livekit.plugins import noise_cancellation
 
 load_dotenv()
 
@@ -142,34 +132,23 @@ async def entrypoint(ctx: agents.JobContext):
         topic = "general conversation"
         difficulty = "intermediate"
     
-    # Create AI agent session with simplified, reliable configuration
-    session_config = {
-        "stt": deepgram.STT(model="nova-2", language="en"),
-        "llm": openai.LLM(model="gpt-4o-mini", temperature=0.7),
-        "tts": deepgram.TTS(model="aura-asteria-en"),
-        "vad": silero.VAD.load(),
-    }
-    
-    # Add optional components if available
-    if TURN_DETECTION_AVAILABLE:
-        session_config["turn_detection"] = MultilingualModel()
-    
-    session = AgentSession(**session_config)
+    # Create enhanced agent session with all necessary components
+    session = AgentSession(
+        stt=deepgram.STT(model="nova-2", language="en"),
+        llm=openai.LLM(model="gpt-4o-mini", temperature=0.7),
+        tts=deepgram.TTS(model="aura-asteria-en"),
+        vad=silero.VAD.load(),
+    )
 
     # Create conversation practice assistant
     assistant = ConversationPracticeAssistant(topic, difficulty)
 
-    # Configure room input options
-    room_options = RoomInputOptions(auto_subscribe=True, auto_publish=True)
-    
-    # Add noise cancellation if available
-    if NOISE_CANCELLATION_AVAILABLE:
-        room_options.noise_cancellation = noise_cancellation.BVC()
-    
     await session.start(
         room=ctx.room,
         agent=assistant,
-        room_input_options=room_options,
+        room_input_options=RoomInputOptions(
+            noise_cancellation=noise_cancellation.BVC(),
+        ),
     )
 
     await ctx.connect()
