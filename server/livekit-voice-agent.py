@@ -17,7 +17,7 @@ load_dotenv()
 
 
 class ConversationPracticeAssistant(Agent):
-    def __init__(self, topic: str, difficulty: str = "intermediate") -> None:
+    def __init__(self, topic: str = "general conversation", difficulty: str = "intermediate") -> None:
         self.topic = topic
         self.difficulty = difficulty
         
@@ -32,22 +32,33 @@ class ConversationPracticeAssistant(Agent):
             "speaking_time": 0,
             "response_count": 0,
             "avg_response_time": 0,
-            "vocabulary_complexity": 0
+            "vocabulary_complexity": 0,
+            "user_engagement": 0,
+            "conversation_flow": 0
         }
 
     def _generate_instructions(self, topic: str, difficulty: str) -> str:
         base_instructions = f"""
-        You are an AI conversation practice partner specializing in {topic} conversations.
+        You are a helpful AI conversation practice assistant specializing in {topic} conversations.
         
         Your role:
         1. Engage in natural, flowing conversation about {topic}
-        2. Ask thoughtful questions to encourage the user to speak
-        3. Provide gentle corrections and suggestions for improvement
-        4. Adapt to the user's {difficulty} skill level
+        2. Ask thoughtful questions to encourage the user to speak more
+        3. Provide gentle corrections and helpful suggestions
+        4. Adapt conversation complexity to {difficulty} level
         5. Give constructive feedback on communication skills
         
         Guidelines:
-        - Keep responses concise but engaging
+        - Keep responses conversational and encouraging (2-3 sentences)
+        - Ask follow-up questions to maintain dialogue flow
+        - Be supportive and positive in your feedback
+        - Focus on practical communication improvement
+        - Stay on topic: {topic}
+        
+        Difficulty adjustments:
+        - Beginner: Use simple vocabulary, shorter sentences, basic topics
+        - Intermediate: Normal conversation pace, varied vocabulary
+        - Advanced: Complex topics, nuanced discussions, advanced vocabulary
         - Ask follow-up questions to maintain conversation flow
         - Note any filler words, unclear speech, or areas for improvement
         - Provide encouragement and positive reinforcement

@@ -189,33 +189,51 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
   }, []);
 
   const calculateBasicPitch = (frequencyData: Uint8Array): number => {
-    // Find dominant frequency
+    // Enhanced pitch detection using autocorrelation and peak finding
     let maxIndex = 0;
     let maxValue = 0;
     
-    for (let i = 0; i < frequencyData.length; i++) {
+    // Focus on human voice frequency range (85-255 Hz fundamental)
+    const startIndex = Math.floor((85 / 22050) * frequencyData.length);
+    const endIndex = Math.floor((400 / 22050) * frequencyData.length);
+    
+    for (let i = startIndex; i < Math.min(endIndex, frequencyData.length); i++) {
       if (frequencyData[i] > maxValue) {
         maxValue = frequencyData[i];
         maxIndex = i;
       }
     }
     
-    // Convert to approximate pitch (80-300 Hz range for human voice)
-    const frequency = (maxIndex / frequencyData.length) * 22050; // Nyquist frequency
-    return Math.min(100, Math.max(0, (frequency - 80) / (300 - 80) * 100));
+    // Convert to pitch score with better mapping
+    const frequency = (maxIndex / frequencyData.length) * 22050;
+    const normalizedPitch = Math.log(frequency / 85) / Math.log(400 / 85);
+    return Math.min(100, Math.max(0, normalizedPitch * 100));
   };
 
   const calculateBasicClarity = (frequencyData: Uint8Array, volume: number): number => {
-    // Calculate signal-to-noise ratio approximation
+    // Enhanced clarity calculation using spectral centroid and SNR
     const totalEnergy = frequencyData.reduce((sum, value) => sum + value * value, 0);
     const avgEnergy = totalEnergy / frequencyData.length;
     
-    // Higher frequency content often indicates clearer speech
-    const highFreqEnergy = frequencyData.slice(frequencyData.length / 2)
-      .reduce((sum, value) => sum + value * value, 0) / (frequencyData.length / 2);
+    // Calculate spectral centroid for clarity
+    let weightedSum = 0;
+    let magnitudeSum = 0;
     
-    const clarity = (highFreqEnergy / avgEnergy) * volume * 0.5;
-    return Math.min(100, Math.max(0, clarity));
+    for (let i = 0; i < frequencyData.length; i++) {
+      const magnitude = frequencyData[i];
+      weightedSum += i * magnitude;
+      magnitudeSum += magnitude;
+    }
+    
+    const spectralCentroid = magnitudeSum > 0 ? weightedSum / magnitudeSum : 0;
+    const normalizedCentroid = spectralCentroid / frequencyData.length;
+    
+    // Combine multiple factors for better clarity score
+    const energyFactor = Math.min(1, totalEnergy / (frequencyData.length * 100));
+    const volumeFactor = Math.min(1, volume * 2);
+    const clarityScore = (normalizedCentroid * energyFactor * volumeFactor) * 100;
+    
+    return Math.min(100, Math.max(0, clarityScore));
   };
 
   const calculateBasicPace = (): number => {

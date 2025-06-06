@@ -48,3 +48,5 @@ async def entrypoint(ctx: agents.JobContext):
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
 and also improve the voice analysis  AND also check for incorrect use of object /array methods in codebase
+and make sure all api endpoints are working
+what else do i need to get this mvp working
