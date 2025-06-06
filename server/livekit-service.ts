@@ -85,14 +85,7 @@ export class LiveKitService {
       });
 
       // Start the Python voice agent process
-      const agentProcess = spawn('python', [
-        'server/simple-voice-agent.py',
-        '--room', roomName,
-        '--livekit-url', this.wsUrl,
-        '--api-key', this.apiKey,
-        '--api-secret', this.apiSecret,
-        '--metadata', metadata
-      ], {
+      const agentProcess = spawn('python', ['server/simple-voice-agent.py'], {
         env: {
           ...process.env,
           LIVEKIT_URL: this.wsUrl,
