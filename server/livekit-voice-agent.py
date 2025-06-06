@@ -5,13 +5,18 @@ from dotenv import load_dotenv
 
 from livekit import agents
 from livekit.agents import AgentSession, Agent, RoomInputOptions
-from livekit.plugins import (
-    openai,
-    deepgram,
-    noise_cancellation,
-    silero,
-)
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.plugins import openai, deepgram, silero
+try:
+    from livekit.plugins import noise_cancellation
+    NOISE_CANCELLATION_AVAILABLE = True
+except ImportError:
+    NOISE_CANCELLATION_AVAILABLE = False
+
+try:
+    from livekit.plugins.turn_detector.multilingual import MultilingualModel
+    TURN_DETECTION_AVAILABLE = True
+except ImportError:
+    TURN_DETECTION_AVAILABLE = False
 
 load_dotenv()
 
@@ -93,7 +98,7 @@ class ConversationPracticeAssistant(Agent):
         if feedback:
             self.feedback_points.append(feedback)
 
-    def _analyze_user_message(self, message: str) -> Dict[str, Any]:
+    def _analyze_user_message(self, message: str) -> Dict[str, Any] | None:
         """Analyze user message for conversation quality"""
         feedback = {}
         
@@ -114,6 +119,12 @@ class ConversationPracticeAssistant(Agent):
                 "suggestion": "Try to elaborate on your thoughts with more detail"
             }
         
+        # Analyze pace and fluency
+        if word_count > 30:
+            feedback["pace"] = {
+                "suggestion": "Good detail in your response! Try to maintain this level of elaboration."
+            }
+        
         return feedback if feedback else None
 
 
@@ -131,48 +142,34 @@ async def entrypoint(ctx: agents.JobContext):
         topic = "general conversation"
         difficulty = "intermediate"
     
-    # Create AI agent session with enhanced voice processing
-    session = AgentSession(
-        stt=deepgram.STT(
-            model="nova-2",
-            language="en-US",
-            smart_format=True,
-            punctuate=True,
-            filler_words=True,
-            sentiment=True,
-            interim_results=True
-        ),
-        llm=openai.LLM(
-            model="gpt-4o-mini",
-            temperature=0.7,
-            max_tokens=150  # Keep responses concise for conversation flow
-        ),
-        tts=deepgram.TTS(
-            model="aura-asteria-en",
-            encoding="linear16",
-            sample_rate=24000
-        ),
-        vad=silero.VAD.load(
-            min_speech_duration=0.5,
-            min_silence_duration=0.8
-        ),
-        turn_detection=MultilingualModel(
-            min_turn_duration=1.0,
-            silence_threshold=0.5
-        ),
-    )
+    # Create AI agent session with simplified, reliable configuration
+    session_config = {
+        "stt": deepgram.STT(model="nova-2", language="en"),
+        "llm": openai.LLM(model="gpt-4o-mini", temperature=0.7),
+        "tts": deepgram.TTS(model="aura-asteria-en"),
+        "vad": silero.VAD.load(),
+    }
+    
+    # Add optional components if available
+    if TURN_DETECTION_AVAILABLE:
+        session_config["turn_detection"] = MultilingualModel()
+    
+    session = AgentSession(**session_config)
 
     # Create conversation practice assistant
     assistant = ConversationPracticeAssistant(topic, difficulty)
 
+    # Configure room input options
+    room_options = RoomInputOptions(auto_subscribe=True, auto_publish=True)
+    
+    # Add noise cancellation if available
+    if NOISE_CANCELLATION_AVAILABLE:
+        room_options.noise_cancellation = noise_cancellation.BVC()
+    
     await session.start(
         room=ctx.room,
         agent=assistant,
-        room_input_options=RoomInputOptions(
-            noise_cancellation=noise_cancellation.BVC(),
-            auto_subscribe=True,
-            auto_publish=True
-        ),
+        room_input_options=room_options,
     )
 
     await ctx.connect()
