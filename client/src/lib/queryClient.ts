@@ -1,3 +1,26 @@
+/**
+ * QueryClient Configuration
+ * 
+ * Configuration for React Query client used throughout the application.
+ * This file sets up the query client with appropriate defaults and
+ * error handling for data fetching and caching.
+ * 
+ * Key Features:
+ * - Query client configuration
+ * - Default options
+ * - Error handling
+ * - Cache management
+ * 
+ * Connections:
+ * - React Query: For data fetching
+ * - API endpoints: For data sources
+ * - Error handling system: For user feedback
+ * 
+ * Usage:
+ * This configuration is used by all components
+ * that need to fetch or cache data.
+ */
+
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {

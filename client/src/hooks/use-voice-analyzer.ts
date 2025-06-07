@@ -3,6 +3,31 @@ import { VoiceMetric } from "@shared/schema";
 import { AdvancedVoiceAnalyzer, AdvancedVoiceMetrics } from "../lib/advanced-audio-analysis";
 import { EnhancedVoiceAnalyzer, EnhancedVoiceMetrics, RealTimeVoiceAnalysis } from "../lib/enhanced-voice-analyzer";
 
+/**
+ * useVoiceAnalyzer Hook
+ * 
+ * A React hook that manages real-time voice analysis during conversation practice.
+ * This hook coordinates between LiveKit audio streams, Deepgram transcription,
+ * and the EnhancedVoiceAnalyzer for comprehensive voice analysis.
+ * 
+ * Key Features:
+ * - Real-time audio level monitoring
+ * - Voice metrics calculation (volume, pitch, clarity, pace)
+ * - Deepgram integration for live transcription
+ * - Advanced voice analysis (tremor detection, emotion analysis)
+ * - WebSocket connection management for real-time analysis
+ * 
+ * Connections:
+ * - LiveKit: For audio stream handling
+ * - Deepgram: For speech-to-text transcription
+ * - EnhancedVoiceAnalyzer: For voice analysis
+ * - WebSocket: For real-time analysis server communication
+ * 
+ * Usage:
+ * This hook is typically used in conversation practice components
+ * to provide real-time voice analysis feedback.
+ */
+
 // Enhanced voice analyzer interface
 interface VoiceAnalyzerOptions {
   enableDeepgram?: boolean;
@@ -14,9 +39,7 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceMetrics, setVoiceMetrics] = useState<VoiceMetric[]>([]);
-  const [advancedMetrics, setAdvancedMetrics] = useState<AdvancedVoiceMetrics | null>(null);
   const [enhancedMetrics, setEnhancedMetrics] = useState<EnhancedVoiceMetrics | null>(null);
-  const [realTimeAnalysis, setRealTimeAnalysis] = useState<RealTimeVoiceAnalysis | null>(null);
   const [deepgramTranscription, setDeepgramTranscription] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
@@ -24,7 +47,6 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const advancedAnalyzerRef = useRef<AdvancedVoiceAnalyzer | null>(null);
   const enhancedAnalyzerRef = useRef<EnhancedVoiceAnalyzer | null>(null);
   const deepgramSocketRef = useRef<WebSocket | null>(null);
   const audioBufferRef = useRef<Float32Array[]>([]);
@@ -33,14 +55,11 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
   // Initialize enhanced voice analyzer
   useEffect(() => {
     if (options.enableDeepgram && options.deepgramApiKey) {
-      advancedAnalyzerRef.current = new AdvancedVoiceAnalyzer(options.deepgramApiKey);
+      // Remove AdvancedVoiceAnalyzer, only use EnhancedVoiceAnalyzer
       enhancedAnalyzerRef.current = new EnhancedVoiceAnalyzer(options.deepgramApiKey);
     }
-    
+
     return () => {
-      if (advancedAnalyzerRef.current) {
-        advancedAnalyzerRef.current.destroy();
-      }
       if (enhancedAnalyzerRef.current) {
         enhancedAnalyzerRef.current.destroy();
       }
@@ -73,8 +92,8 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
       }
 
       // Initialize advanced analyzer with LiveKit stream
-      if (advancedAnalyzerRef.current) {
-        await advancedAnalyzerRef.current.initialize(mediaStream);
+      if (enhancedAnalyzerRef.current) {
+        await enhancedAnalyzerRef.current.initialize(mediaStream);
       }
     } catch (error) {
       console.error('Failed to connect to LiveKit audio:', error);
@@ -145,11 +164,11 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
     }
 
     // Perform advanced voice analysis
-    if (advancedAnalyzerRef.current && audioBufferRef.current.length >= 10) {
+    if (enhancedAnalyzerRef.current && audioBufferRef.current.length >= 10) {
       try {
         setIsAnalyzing(true);
-        const advanced = await advancedAnalyzerRef.current.analyzeVoice();
-        setAdvancedMetrics(advanced);
+        const advanced = await enhancedAnalyzerRef.current.analyzeVoice();
+        setEnhancedMetrics(advanced);
 
         // Convert advanced metrics to basic voice metric
         const basicMetric: VoiceMetric = {
@@ -287,9 +306,8 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
         analysisIntervalRef.current = setInterval(async () => {
           if (enhancedAnalyzerRef.current) {
             try {
-              const analysis = await enhancedAnalyzerRef.current.analyzeCurrentVoice();
-              setRealTimeAnalysis(analysis);
-              setEnhancedMetrics(analysis.currentMetrics);
+              const metrics = await enhancedAnalyzerRef.current.analyzeVoice();
+              setEnhancedMetrics(metrics);
               
               // Update transcription from enhanced analyzer
               const transcript = (enhancedAnalyzerRef.current as any).transcriptionBuffer || "";
@@ -299,11 +317,6 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
             }
           }
         }, 1000); // Analyze every second
-      }
-
-      // Initialize advanced analyzer if enabled
-      if (options.enableDeepgram && advancedAnalyzerRef.current) {
-        await advancedAnalyzerRef.current.initialize(stream);
       }
 
       // Initialize Deepgram connection
@@ -340,8 +353,8 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
       deepgramSocketRef.current = null;
     }
 
-    if (advancedAnalyzerRef.current) {
-      advancedAnalyzerRef.current.destroy();
+    if (enhancedAnalyzerRef.current) {
+      enhancedAnalyzerRef.current.destroy();
     }
     
     analyserRef.current = null;
@@ -363,7 +376,7 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
 
   const resetAnalysis = useCallback(() => {
     setVoiceMetrics([]);
-    setAdvancedMetrics(null);
+    setEnhancedMetrics(null);
     setDeepgramTranscription("");
     audioBufferRef.current = [];
   }, []);
@@ -383,10 +396,9 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
       averageClarity: Math.round(avgClarity),
       averagePace: Math.round(avgPace),
       sampleCount: recent.length,
-      hasAdvancedMetrics: !!advancedMetrics,
       transcriptionLength: deepgramTranscription.length
     };
-  }, [voiceMetrics, advancedMetrics, deepgramTranscription]);
+  }, [voiceMetrics, deepgramTranscription]);
 
   return {
     // Basic metrics
@@ -394,10 +406,8 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
     isRecording,
     voiceMetrics,
     
-    // Advanced metrics
-    advancedMetrics,
+    // Enhanced metrics
     enhancedMetrics,
-    realTimeAnalysis,
     deepgramTranscription,
     isAnalyzing,
     
@@ -412,7 +422,6 @@ export function useVoiceAnalyzer(options: VoiceAnalyzerOptions = {}) {
     
     // Status
     hasDeepgramConnection: !!deepgramSocketRef.current,
-    hasAdvancedAnalyzer: !!advancedAnalyzerRef.current,
     hasEnhancedAnalyzer: !!enhancedAnalyzerRef.current
   };
 }

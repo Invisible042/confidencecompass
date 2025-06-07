@@ -17,6 +17,30 @@ export interface AdvancedEyeTrackingData extends EyeTrackingPoint {
   processingTime: number;
 }
 
+/**
+ * useAdvancedEyeTracking Hook
+ * 
+ * A React hook that provides advanced eye tracking capabilities using MediaPipe Face Mesh.
+ * This hook manages the eye tracking state, metrics, and real-time analysis.
+ * 
+ * Key Features:
+ * - Real-time eye position tracking
+ * - Blink detection and analysis
+ * - Gaze direction calculation
+ * - Eye movement metrics (saccades, fixations)
+ * - Performance optimization for mobile devices
+ * 
+ * Connections:
+ * - MediaPipe Face Mesh: For facial landmark detection
+ * - useCamera: For video stream access
+ * - EyeTrackingMetrics: For metrics calculation
+ * - IntegrationService: For combining with other metrics
+ * 
+ * Usage:
+ * This hook is used in conversation practice components
+ * to provide real-time eye tracking feedback and analysis.
+ */
+
 export function useAdvancedEyeTracking(
   videoRef: React.RefObject<HTMLVideoElement>, 
   isActive: boolean

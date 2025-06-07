@@ -1,3 +1,28 @@
+/**
+ * MediaPipe Utilities
+ * 
+ * A collection of utility functions for working with MediaPipe Face Mesh
+ * and other MediaPipe solutions. These utilities provide helper functions
+ * for face detection, landmark processing, and visualization.
+ * 
+ * Key Features:
+ * - Face mesh initialization
+ * - Landmark processing
+ * - Visualization helpers
+ * - Performance optimization
+ * - Error handling
+ * 
+ * Connections:
+ * - MediaPipe Face Mesh: For face detection
+ * - useEyeTracking: For eye tracking features
+ * - useAdvancedEyeTracking: For advanced tracking
+ * - Canvas API: For visualization
+ * 
+ * Usage:
+ * These utilities are used throughout the application
+ * for face tracking and analysis features.
+ */
+
 import { FaceMesh } from '@mediapipe/face_mesh';
 import { Camera } from '@mediapipe/camera_utils';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';

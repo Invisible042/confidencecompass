@@ -1,11 +1,13 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { 
   LiveKitRoom as LiveKitRoomComponent, 
   RoomAudioRenderer, 
   AudioTrack,
-  BarVisualizer
+  BarVisualizer,
+  useRoom,
+  useParticipant
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { Track, RoomEvent, RemoteParticipant } from "livekit-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,189 +34,178 @@ interface LiveKitRoomProps {
 
 export function LiveKitRoom({ roomData, topic, onEnd }: LiveKitRoomProps) {
   const [isMuted, setIsMuted] = useState(false);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
-  const [conversationStarted, setConversationStarted] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [sessionTimer, setSessionTimer] = useState(0);
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const queryClient = useQueryClient();
+  const [conversationStarted, setConversationStarted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const timerRef = useRef<NodeJS.Timeout>();
+  const room = useRoom();
+  const aiParticipant = useParticipant("ai-agent");
+  
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Real-time tracking hooks
-  const { 
-    videoRef, 
-    stream, 
-    isVideoEnabled, 
-    toggleVideo, 
-    startCamera, 
-    stopCamera 
-  } = useCamera();
+  // Camera and analysis hooks
+  const { startCamera, stopCamera, isActive: isCameraActive } = useCamera();
+  const { startEyeTracking, stopEyeTracking, eyeTrackingData, confidence } = useEyeTracking();
+  const { startAnalysis, stopAnalysis, metrics } = useVoiceAnalyzer({
+    enableDeepgram: true,
+    deepgramApiKey: process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY
+  });
 
-  const {
-    audioLevel,
-    isRecording,
-    voiceMetrics,
-    startRecording,
-    stopRecording,
-    toggleMute
-  } = useVoiceAnalyzer();
-
-  const { eyeTrackingData, confidence } = useEyeTracking(videoRef, conversationStarted);
-
-  const createSessionMutation = useMutation({
-    mutationFn: async (sessionData: any) => {
-      const response = await apiRequest("POST", "/api/sessions", sessionData);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user/progress"] });
-      toast({
-        title: "Conversation Session Saved",
-        description: "Your AI conversation analysis has been saved successfully.",
+  // End conversation mutation
+  const endConversationMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("/api/conversation/end", {
+        method: "POST",
+        body: JSON.stringify({ roomName: roomData.roomName })
       });
     },
-    onError: () => {
+    onSuccess: () => {
+      cleanup();
+      onEnd();
+    },
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to save conversation session. Please try again.",
-        variant: "destructive",
+        description: "Failed to end conversation. Please try again.",
+        variant: "destructive"
       });
     }
   });
 
-  const saveConversationSession = async () => {
-    if (!startTime) return;
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    stopCamera();
+    stopEyeTracking();
+    stopAnalysis();
+    setIsRecording(false);
+    setConversationStarted(false);
+    if (room) {
+      room.disconnect();
+    }
+  }, [stopCamera, stopEyeTracking, stopAnalysis, room]);
 
-    const duration = sessionTimer;
-    const eyeContactScore = eyeTrackingData.length > 0 
-      ? eyeTrackingData.reduce((sum, data) => sum + data.confidence, 0) / eyeTrackingData.length
-      : 0;
-
-    const avgVoiceClarity = voiceMetrics.length > 0
-      ? voiceMetrics.reduce((sum, metric) => sum + metric.clarity, 0) / voiceMetrics.length
-      : 0;
-
-    const avgSpeakingPace = voiceMetrics.length > 0
-      ? voiceMetrics.reduce((sum, metric) => sum + metric.pace, 0) / voiceMetrics.length
-      : 0;
-
-    const avgVolumeLevel = voiceMetrics.length > 0
-      ? voiceMetrics.reduce((sum, metric) => sum + metric.volume, 0) / voiceMetrics.length
-      : 0;
-
-    const overallScore = (eyeContactScore + (avgVoiceClarity / 100) + (avgSpeakingPace / 100)) / 3;
-
-    await createSessionMutation.mutateAsync({
-      title: `AI Conversation: ${topic.title}`,
-      duration,
-      eyeContactScore: eyeContactScore,
-      voiceClarity: avgVoiceClarity / 100,
-      speakingPace: avgSpeakingPace / 100,
-      volumeLevel: avgVolumeLevel / 100,
-      overallScore: overallScore,
-      eyeTrackingData: eyeTrackingData,
-      voiceMetrics: voiceMetrics,
-      sessionType: "conversation",
-      conversationTopic: topic.id,
-      aiInteractions: {
-        topic: topic.id,
-        difficulty: topic.difficulty,
-        category: topic.category,
-        sessionDuration: duration
-      }
-    });
-  };
-
-  const handleConnected = async () => {
-    setIsConnected(true);
-    setStartTime(new Date());
-    setSessionTimer(0);
-    
-    // Start camera and voice analysis
+  // Handle room connection
+  const handleConnected = useCallback(async () => {
     try {
-      await startCamera();
-      await startRecording();
+      setIsConnected(true);
+      setConversationStarted(true);
+      
+      // Start camera and tracking
+      if (videoRef.current) {
+        await startCamera(videoRef.current);
+        startEyeTracking(videoRef.current);
+      }
+      
+      // Start voice analysis
+      startAnalysis();
+      setIsRecording(true);
       
       // Start session timer
       timerRef.current = setInterval(() => {
         setSessionTimer(prev => prev + 1);
       }, 1000);
       
-      setTimeout(() => {
-        setConversationStarted(true);
-      }, 2000);
     } catch (error) {
-      console.error("Error starting tracking:", error);
+      console.error("Error in handleConnected:", error);
+      setError("Failed to initialize camera and tracking");
+      toast({
+        title: "Error",
+        description: "Failed to initialize camera and tracking. Please check your permissions.",
+        variant: "destructive"
+      });
     }
-  };
+  }, [startCamera, startEyeTracking, startAnalysis, toast]);
 
-  const handleDisconnected = async () => {
+  // Handle room disconnection
+  const handleDisconnected = useCallback(() => {
+    cleanup();
     setIsConnected(false);
-    setConversationStarted(false);
-    stopCamera();
-    stopRecording();
-    
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    
-    // Save session data if conversation lasted more than 10 seconds
-    if (sessionTimer > 10) {
-      await saveConversationSession();
-    }
-  };
+    toast({
+      title: "Disconnected",
+      description: "Connection to the conversation room was lost.",
+      variant: "destructive"
+    });
+  }, [cleanup, toast]);
 
-  const handleEndConversation = async () => {
-    await handleDisconnected();
-    onEnd();
-  };
+  // Handle errors
+  const handleError = useCallback((error: Error) => {
+    console.error("LiveKit room error:", error);
+    setError(error.message);
+    toast({
+      title: "Error",
+      description: error.message,
+      variant: "destructive"
+    });
+  }, [toast]);
 
-  const formatTime = (seconds: number) => {
+  // Toggle mute
+  const toggleMute = useCallback(() => {
+    if (room) {
+      const audioTrack = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+      if (audioTrack) {
+        if (isMuted) {
+          room.localParticipant.unmuteMicrophone();
+        } else {
+          room.localParticipant.muteMicrophone();
+        }
+        setIsMuted(!isMuted);
+      }
+    }
+  }, [room, isMuted]);
+
+  // Toggle video
+  const toggleVideo = useCallback(() => {
+    if (room) {
+      const videoTrack = room.localParticipant.getTrackPublication(Track.Source.Camera);
+      if (videoTrack) {
+        if (isVideoEnabled) {
+          room.localParticipant.unpublishTrack(videoTrack.track);
+        } else {
+          room.localParticipant.publishTrack(videoTrack.track);
+        }
+        setIsVideoEnabled(!isVideoEnabled);
+      }
+    }
+  }, [room, isVideoEnabled]);
+
+  // Format time
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanup();
+    };
+  }, [cleanup]);
+
+  if (error) {
   return (
-    <div className="space-y-4 md:space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg md:text-xl flex items-center justify-between">
-            <span className="flex items-center">
-              <MessageCircle className="mr-2 h-5 w-5" />
-              {topic.title}
-            </span>
-            <Badge variant={topic.difficulty === 'beginner' ? 'default' : 
-                          topic.difficulty === 'intermediate' ? 'secondary' : 'destructive'}>
-              {topic.difficulty}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
+      <Card className="p-4">
         <CardContent>
-          <div className="space-y-4">
-            <p className="text-gray-600 text-sm md:text-base">{topic.description}</p>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center space-x-2">
-                <Badge variant="outline">{topic.category}</Badge>
-                <span className="text-sm text-gray-500">
-                  Session: {formatTime(sessionTimer)}
-                </span>
-              </div>
-              <Button 
-                variant="destructive" 
-                onClick={handleEndConversation}
-                className="w-full sm:w-auto"
-              >
-                End Conversation
+          <p className="text-red-500">{error}</p>
+          <Button onClick={onEnd} className="mt-4">
+            End Session
               </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Real-time Analysis Grid - Mobile Responsive */}
+  return (
+    <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Camera Feed and LiveKit Room */}
         <div className="lg:col-span-2 space-y-4 md:space-y-6">
@@ -232,6 +223,7 @@ export function LiveKitRoom({ roomData, topic, onEnd }: LiveKitRoomProps) {
             connect={true}
             onConnected={handleConnected}
             onDisconnected={handleDisconnected}
+            onError={handleError}
             options={{
               publishDefaults: {
                 audio: true,
@@ -284,52 +276,39 @@ export function LiveKitRoom({ roomData, topic, onEnd }: LiveKitRoomProps) {
                 </div>
                 
                 {/* Voice Activity Visualization */}
+                {aiParticipant && (
                 <div className="mt-4">
-                  <div className="flex items-end justify-center space-x-1 h-12 bg-gray-50 rounded-lg p-2">
-                    {[...Array(20)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`w-1 bg-blue-500 rounded-full transition-all duration-150 ${
-                          isRecording ? 'animate-pulse' : ''
-                        }`}
-                        style={{ 
-                          height: `${(audioLevel / 100) * 80 + 20}%`,
-                          animationDelay: `${i * 50}ms`
-                        }}
-                      />
-                    ))}
+                    <BarVisualizer
+                      participant={aiParticipant}
+                      className="h-8"
+                    />
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
-            
-            <RoomAudioRenderer />
           </LiveKitRoomComponent>
         </div>
 
-        {/* Real-time Metrics Panel */}
+        {/* Metrics Panel */}
+        <div className="lg:col-span-1">
         <MetricsPanel
-          voiceMetrics={voiceMetrics}
-          eyeContactScore={confidence * 100}
-          sessionTimer={formatTime(sessionTimer)}
-          overallScore={Math.round((confidence * 100 + audioLevel) / 2)}
-          isActive={conversationStarted}
-        />
+            metrics={metrics}
+            eyeTrackingData={eyeTrackingData}
+            sessionDuration={sessionTimer}
+          />
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base md:text-lg">Conversation Tips</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li>• Maintain natural eye contact with the camera</li>
-            <li>• Speak clearly and at a comfortable pace</li>
-            <li>• Listen actively to the AI responses</li>
-            <li>• Practice natural conversation flow</li>
-          </ul>
-        </CardContent>
-      </Card>
+      {/* End Session Button */}
+      <div className="flex justify-end">
+        <Button
+          variant="destructive"
+          onClick={() => endConversationMutation.mutate()}
+          disabled={endConversationMutation.isPending}
+        >
+          {endConversationMutation.isPending ? "Ending..." : "End Session"}
+        </Button>
+      </div>
     </div>
   );
 }

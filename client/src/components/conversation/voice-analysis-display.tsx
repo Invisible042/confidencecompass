@@ -1,3 +1,30 @@
+/**
+ * VoiceAnalysisDisplay Component
+ * 
+ * This component provides a real-time visualization of voice analysis metrics during conversation practice.
+ * It displays both basic and advanced voice metrics, including:
+ * - Audio level visualization
+ * - Basic metrics (volume, pitch, clarity, pace)
+ * - Advanced metrics (voice stability, emotional state, filler words)
+ * - Live transcription
+ * 
+ * Connections:
+ * - Receives data from useVoiceAnalyzer hook
+ * - Integrates with Deepgram for transcription
+ * - Uses EnhancedVoiceAnalyzer for advanced metrics
+ * - Connects to LiveKit for audio stream
+ * 
+ * Props:
+ * - voiceMetrics: Basic voice metrics from the analyzer
+ * - advancedMetrics: Enhanced metrics including tremor and emotion analysis
+ * - deepgramTranscription: Live transcription from Deepgram
+ * - audioLevel: Current audio input level
+ * - isAnalyzing: Whether advanced analysis is in progress
+ * - isRecording: Whether audio is being recorded
+ * - hasDeepgramConnection: Deepgram connection status
+ * - hasAdvancedAnalyzer: Whether advanced analysis is enabled
+ */
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -5,11 +32,11 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Mic, Volume2, Gauge, Zap, Brain, MessageSquare } from "lucide-react";
 import { VoiceMetric } from "@shared/schema";
-import { AdvancedVoiceMetrics } from "@/lib/advanced-audio-analysis";
+import { EnhancedVoiceMetrics } from "@/lib/enhanced-voice-analyzer";
 
 interface VoiceAnalysisDisplayProps {
   voiceMetrics: VoiceMetric[];
-  advancedMetrics: AdvancedVoiceMetrics | null;
+  advancedMetrics: EnhancedVoiceMetrics | null;
   deepgramTranscription: string;
   audioLevel: number;
   isAnalyzing: boolean;

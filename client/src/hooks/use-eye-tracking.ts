@@ -4,6 +4,29 @@ import { FaceMesh } from "@mediapipe/face_mesh";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 
+/**
+ * useEyeTracking Hook
+ * 
+ * A React hook that provides basic eye tracking functionality.
+ * This hook serves as a simpler alternative to useAdvancedEyeTracking,
+ * focusing on core eye tracking features.
+ * 
+ * Key Features:
+ * - Basic eye position tracking
+ * - Simple blink detection
+ * - Eye contact detection
+ * - Performance monitoring
+ * 
+ * Connections:
+ * - MediaPipe Face Mesh: For facial landmark detection
+ * - useCamera: For video stream access
+ * - EyeTrackingMetrics: For basic metrics
+ * 
+ * Usage:
+ * This hook is used when advanced eye tracking features
+ * are not required, providing better performance.
+ */
+
 // Enhanced face tracking data structure
 interface FaceTrackingData {
   eyeContact: EyeTrackingPoint;

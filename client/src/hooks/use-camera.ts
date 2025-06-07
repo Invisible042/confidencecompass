@@ -1,5 +1,28 @@
 import { useRef, useState, useCallback } from "react";
 
+/**
+ * useCamera Hook
+ * 
+ * A React hook that manages camera access and video stream handling.
+ * This hook provides a simple interface for accessing and controlling
+ * the device's camera for video analysis.
+ * 
+ * Key Features:
+ * - Camera stream initialization
+ * - Stream cleanup on unmount
+ * - Error handling for camera access
+ * - Device selection (front/back camera)
+ * 
+ * Connections:
+ * - MediaDevices API: For camera access
+ * - React refs: For video element binding
+ * - Error handling system: For user feedback
+ * 
+ * Usage:
+ * This hook is used as a foundation for video-based features
+ * like eye tracking and face analysis.
+ */
+
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
